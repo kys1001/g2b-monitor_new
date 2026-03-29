@@ -26,14 +26,8 @@ export async function GET(req: NextRequest) {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
-  if (groupId) {
-    conditions.push(`bn.id IN (
-      SELECT DISTINCT km.bid_notice_id FROM keyword_matches km
-      JOIN keywords k ON km.keyword_id = k.id
-      WHERE k.group_id = ?
-    )`);
-    params.push(parseInt(groupId));
-  } else if (matchedKeyword) {
+  // 탭 기반 기본 필터 (우선순위: 체크박스 키워드 > 즐겨찾기 > 매칭전체)
+  if (matchedKeyword) {
     const kwList = matchedKeyword.split(',').map(s => s.trim()).filter(Boolean);
     const placeholders = kwList.map(() => '?').join(', ');
     conditions.push(`bn.id IN (
@@ -46,6 +40,16 @@ export async function GET(req: NextRequest) {
     conditions.push(`bno.is_favorite = 1`);
   } else if (matchedOnly) {
     conditions.push(`bn.id IN (SELECT DISTINCT bid_notice_id FROM keyword_matches)`);
+  }
+
+  // 카테고리(그룹) 필터 — 위 조건과 중첩 적용
+  if (groupId) {
+    conditions.push(`bn.id IN (
+      SELECT DISTINCT km.bid_notice_id FROM keyword_matches km
+      JOIN keywords k ON km.keyword_id = k.id
+      WHERE k.group_id = ?
+    )`);
+    params.push(parseInt(groupId));
   }
 
   if (keyword) {

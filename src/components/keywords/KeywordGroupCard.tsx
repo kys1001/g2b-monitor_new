@@ -9,7 +9,7 @@ import { useState } from 'react';
 
 interface Props {
   group: KeywordGroup;
-  onAddKeyword: (groupId: number, keyword: string) => void;
+  onAddKeyword: (groupId: number, keyword: string | string[]) => void;
   onDeleteKeyword: (id: number) => void;
   onToggleKeyword: (id: number, isActive: number) => void;
   onDeleteGroup: (id: number) => void;
@@ -23,7 +23,9 @@ export function KeywordGroupCard({
 
   const handleAdd = () => {
     if (!newKw.trim()) return;
-    onAddKeyword(group.id, newKw.trim());
+    const keywords = newKw.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    if (keywords.length === 0) return;
+    onAddKeyword(group.id, keywords.length === 1 ? keywords[0] : keywords);
     setNewKw('');
   };
 
@@ -91,7 +93,7 @@ export function KeywordGroupCard({
           value={newKw}
           onChange={e => setNewKw(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
-          placeholder="키워드 입력 후 Enter"
+          placeholder="키워드 입력 (쉼표로 여러 개: A,B,C)"
           className="h-7 text-xs flex-1"
         />
         <Button size="sm" onClick={handleAdd} className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white">추가</Button>

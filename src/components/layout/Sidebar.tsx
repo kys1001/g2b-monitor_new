@@ -14,10 +14,10 @@ export function Sidebar() {
   return (
     <aside className="w-56 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col shrink-0">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-        <div className="font-bold text-blue-600 dark:text-blue-400 text-sm leading-tight">
+        <Link href="/" className="font-bold text-blue-600 dark:text-blue-400 text-sm leading-tight hover:opacity-75 transition-opacity">
           🐰 나라장터<br />
           <span className="text-slate-500 dark:text-slate-400 font-normal text-xs">입찰공고 모니터</span>
-        </div>
+        </Link>
       </div>
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map(item => (

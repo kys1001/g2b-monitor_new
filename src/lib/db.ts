@@ -116,10 +116,18 @@ function initSchema(db: Database.Database) {
 }
 
 function migrate(db: Database.Database) {
-  // bid_notes에 is_favorite 컬럼 추가 (이미 있으면 무시)
+  // Migration 1: is_favorite 컬럼
   try {
     db.exec(`ALTER TABLE bid_notes ADD COLUMN is_favorite INTEGER DEFAULT 0`);
   } catch { /* 이미 존재 */ }
+
+  // Migration 2: 기본 키워드 교체 (seed v2)
+  const m2Done = db.prepare('SELECT id FROM seed_done WHERE id = 2').get();
+  if (!m2Done) {
+    // 기존 그룹/키워드/매칭 전체 초기화 후 새 seed 재실행
+    db.prepare('DELETE FROM keyword_groups').run(); // CASCADE → keywords, keyword_matches
+    db.prepare('DELETE FROM seed_done').run();      // seedInitialData 재실행 허용
+  }
 }
 
 function seedInitialData(db: Database.Database) {
@@ -127,10 +135,21 @@ function seedInitialData(db: Database.Database) {
   if (seedDone) return;
 
   const initialGroups = [
-    { name: 'AI교육', priority: 'core', keywords: ['인공지능교육', 'AI교육', 'AI리터러시', '디지털리터러시', 'AI활용교육', '인공지능'] },
-    { name: '정책분석', priority: 'core', keywords: ['정책분석', '정책연구', '정책평가', '정책컨설팅'] },
-    { name: '디지털전환', priority: 'interest', keywords: ['디지털전환', 'DX', '디지털혁신', '스마트시티'] },
-    { name: '교육컨설팅', priority: 'interest', keywords: ['교육컨설팅', '교육과정개발', '교수학습', '교원연수'] },
+    {
+      name: 'AI 교육', priority: 'core', keywords: [
+        'AI 교육', '인공지능 교육', 'AX', 'AX 교육', 'AI 특화', 'AI 위탁', 'AI 훈련',
+        'AI 프로그램', '디지털 교육', '생성형 교육', '리터러시', 'AI 리터러시', '디지털 리터러시',
+        '교원 연수', 'AI 교재', '인공지능 교재', 'AI 교육과정', '인공지능 교육과정',
+        'AI 동향', '위탁 교육', '연수', '인정도서',
+      ],
+    },
+    {
+      name: '디지털 전환', priority: 'interest', keywords: [
+        'AI 활용', '인공지능 활용', '캠프', 'AI 인력', '인공지능 인력', '인공지능 인재', 'AI 인재',
+        '부트캠프', '부트 캠프', 'AI 양성', '인공지능 양성', 'AI 조사 용역', 'AI 조사',
+        '인공지능 조사', '인력 양성', '행사 운영', '교육', '콘텐츠',
+      ],
+    },
   ];
 
   const insertGroup = db.prepare('INSERT INTO keyword_groups (name, priority) VALUES (?, ?)');
@@ -293,7 +312,8 @@ function seedInitialData(db: Database.Database) {
       VALUES (datetime('now', 'localtime', '-5 minutes'), datetime('now', 'localtime'), 'getBidPblancListInfoServc', 47, 5, 5, 'success')
     `).run();
 
-    db.prepare('INSERT INTO seed_done (id) VALUES (1)').run();
+    db.prepare('INSERT OR IGNORE INTO seed_done (id) VALUES (1)').run();
+    db.prepare('INSERT OR IGNORE INTO seed_done (id) VALUES (2)').run();
   });
 
   seedAll();

@@ -11,6 +11,7 @@ export default function KeywordsPage() {
   const [groups, setGroups] = useState<KeywordGroup[]>([]);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupPriority, setNewGroupPriority] = useState('normal');
+  const [filterGroupId, setFilterGroupId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const fetchGroups = useCallback(async () => {
@@ -33,14 +34,17 @@ export default function KeywordsPage() {
     toast({ title: '그룹 추가 완료' });
   };
 
-  const addKeyword = async (groupId: number, keyword: string) => {
-    await fetch('/api/keywords', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_id: groupId, keyword }),
-    });
+  const addKeyword = async (groupId: number, keyword: string | string[]) => {
+    const keywords = Array.isArray(keyword) ? keyword : [keyword];
+    for (const kw of keywords) {
+      await fetch('/api/keywords', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId, keyword: kw }),
+      });
+    }
     fetchGroups();
-    toast({ title: `"${keyword}" 추가됨` });
+    toast({ title: keywords.length > 1 ? `${keywords.length}개 키워드 추가됨` : `"${keywords[0]}" 추가됨` });
   };
 
   const deleteKeyword = async (id: number) => {
@@ -79,10 +83,28 @@ export default function KeywordsPage() {
     fetchGroups();
   };
 
+  const filteredGroups = filterGroupId ? groups.filter(g => g.id === filterGroupId) : groups;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-bold">키워드 관리</h2>
+        <div className="flex items-center gap-2">
+          <Select
+            value={filterGroupId ? String(filterGroupId) : 'all'}
+            onValueChange={v => setFilterGroupId(v === 'all' ? null : Number(v))}
+          >
+            <SelectTrigger className="w-44 h-8 text-xs">
+              <SelectValue placeholder="그룹 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체 그룹 보기</SelectItem>
+              {groups.map(g => (
+                <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-6">
@@ -110,7 +132,7 @@ export default function KeywordsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {groups.map(group => (
+        {filteredGroups.map(group => (
           <KeywordGroupCard
             key={group.id}
             group={group}

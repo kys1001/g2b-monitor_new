@@ -29,8 +29,10 @@ export default function DashboardPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const { toast } = useToast();
 
-  // Filters
-  const [filterGroup, setFilterGroup] = useState('');
+  // 카테고리(그룹) 선택 — 전체 대시보드 필터
+  const [activeGroupId, setActiveGroupId] = useState('');
+
+  // 공고 목록 세부 필터
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterInstitution, setFilterInstitution] = useState('');
   const [filterSrvce, setFilterSrvce] = useState('');
@@ -56,7 +58,7 @@ export default function DashboardPage() {
     const params = new URLSearchParams({ page: String(page), limit: '20', sortBy, sortOrder: 'desc' });
     if (tab === 'matched') params.set('matchedOnly', '1');
     if (tab === 'favorites') params.set('favoritesOnly', '1');
-    if (filterGroup) params.set('groupId', filterGroup);
+    if (activeGroupId) params.set('groupId', activeGroupId);
     if (filterKeyword) params.set('keyword', filterKeyword);
     if (filterInstitution) params.set('institution', filterInstitution);
     if (filterSrvce) params.set('srvceDivNm', filterSrvce);
@@ -66,13 +68,15 @@ export default function DashboardPage() {
     const data = await res.json();
     setNotices(data.notices);
     setTotal(data.total);
-  }, [page, tab, filterGroup, filterKeyword, filterInstitution, filterSrvce, sortBy, checkedKeywords]);
+  }, [page, tab, activeGroupId, filterKeyword, filterInstitution, filterSrvce, sortBy, checkedKeywords]);
 
   const fetchStats = useCallback(async () => {
-    const res = await fetch('/api/dashboard');
+    const params = new URLSearchParams();
+    if (activeGroupId) params.set('groupId', activeGroupId);
+    const res = await fetch(`/api/dashboard?${params}`);
     const data = await res.json();
     setStats(data);
-  }, []);
+  }, [activeGroupId]);
 
   const fetchGroups = useCallback(async () => {
     const res = await fetch('/api/keyword-groups');
@@ -81,7 +85,15 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => { fetchNotices(); }, [fetchNotices]);
-  useEffect(() => { fetchStats(); fetchGroups(); }, [fetchStats, fetchGroups]);
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+
+  // 카테고리 변경 시 키워드 체크 초기화
+  const handleCategoryChange = (groupId: string) => {
+    setActiveGroupId(groupId);
+    setPage(1);
+    clearCheckedKeywords();
+  };
 
   const handleRematch = async () => {
     setRematching(true);
@@ -100,7 +112,6 @@ export default function DashboardPage() {
 
   const handleToggleFavorite = async (notice: BidNotice) => {
     const newVal = notice.is_favorite === 1 ? 0 : 1;
-    // 낙관적 업데이트
     setNotices(prev => prev.map(n => n.id === notice.id ? { ...n, is_favorite: newVal } : n));
     if (selected?.id === notice.id) setSelected(prev => prev ? { ...prev, is_favorite: newVal } : prev);
 
@@ -110,7 +121,6 @@ export default function DashboardPage() {
       body: JSON.stringify({ is_favorite: newVal }),
     });
 
-    // 즐겨찾기 탭이면 목록 새로고침
     if (tab === 'favorites') fetchNotices();
 
     toast({
@@ -120,9 +130,46 @@ export default function DashboardPage() {
   };
 
   const totalPages = Math.ceil(total / 20);
+  const activeGroup = groups.find(g => String(g.id) === activeGroupId);
 
   return (
     <div>
+      {/* ── 카테고리 탭 ── */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 mb-5">
+        <p className="text-xs text-slate-400 dark:text-slate-500 mb-2 font-medium">카테고리 선택</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleCategoryChange('')}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+              activeGroupId === ''
+                ? 'bg-slate-700 text-white border-slate-700 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-400'
+            }`}
+          >
+            전체
+          </button>
+          {groups.map(g => (
+            <button
+              key={g.id}
+              onClick={() => handleCategoryChange(String(g.id))}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                activeGroupId === String(g.id)
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-blue-300 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400'
+              }`}
+            >
+              {g.name}
+            </button>
+          ))}
+        </div>
+        {activeGroup && (
+          <p className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+            <span className="font-semibold">"{activeGroup.name}"</span> 카테고리 기준으로 필터링 중
+          </p>
+        )}
+      </div>
+
+      {/* ── 요약 카드 & 차트 ── */}
       {stats && (
         <>
           <SummaryCards
@@ -141,25 +188,26 @@ export default function DashboardPage() {
         </>
       )}
 
+      {/* ── 공고 목록 ── */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         {/* Tab + Rematch */}
         <div className="flex items-center gap-2 mb-4">
           <div className="flex rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden text-xs">
             <button
               onClick={() => { setTab('matched'); setPage(1); }}
-              className={`px-3 py-1.5 font-medium transition-colors ${tab === 'matched' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400'}`}
+              className={`px-3 py-1.5 font-medium transition-colors ${tab === 'matched' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700'}`}
             >
               🔑 키워드 매칭 공고
             </button>
             <button
-              onClick={() => { setTab('favorites'); setPage(1); setFilterGroup(''); clearCheckedKeywords(); }}
-              className={`px-3 py-1.5 font-medium transition-colors ${tab === 'favorites' ? 'bg-yellow-500 text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400'}`}
+              onClick={() => { setTab('favorites'); setPage(1); clearCheckedKeywords(); }}
+              className={`px-3 py-1.5 font-medium transition-colors ${tab === 'favorites' ? 'bg-yellow-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700'}`}
             >
               ★ 관심 입찰 공고
             </button>
             <button
-              onClick={() => { setTab('all'); setPage(1); setFilterGroup(''); clearCheckedKeywords(); }}
-              className={`px-3 py-1.5 font-medium transition-colors ${tab === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400'}`}
+              onClick={() => { setTab('all'); setPage(1); clearCheckedKeywords(); }}
+              className={`px-3 py-1.5 font-medium transition-colors ${tab === 'all' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700'}`}
             >
               📋 전체 수집 공고
             </button>
@@ -178,20 +226,6 @@ export default function DashboardPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {tab === 'matched' && (
-            <Select value={filterGroup} onValueChange={v => { setFilterGroup(v === 'all' ? '' : v); setPage(1); }}>
-              <SelectTrigger className="w-36 h-8 text-xs">
-                <SelectValue placeholder="키워드 그룹" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 그룹</SelectItem>
-                {groups.map(g => (
-                  <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
           <Input
             className="w-44 h-8 text-xs"
             placeholder="공고명 검색..."
