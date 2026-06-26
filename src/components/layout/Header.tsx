@@ -85,7 +85,7 @@ export function Header() {
       <h1 className="text-sm font-semibold text-slate-600 dark:text-slate-300">나라장터 용역 입찰공고 모니터링</h1>
       <div className="flex items-center gap-2">
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-          <PopoverTrigger asChild>
+          <PopoverTrigger render={
             <Button
               size="sm"
               variant="outline"
@@ -94,7 +94,7 @@ export function Header() {
             >
               📅 {dateFrom} ~ {dateTo}
             </Button>
-          </PopoverTrigger>
+          } />
           <PopoverContent className="w-72 p-4" align="end">
             <p className="text-xs font-semibold text-slate-600 mb-3">수집 기간 설정</p>
             <div className="space-y-3">

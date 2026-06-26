@@ -14,6 +14,11 @@ export function MatchChart({ data, selectedKeywords, onToggle, onClear }: Props)
   if (!data.length) return null;
 
   const hasSelection = selectedKeywords.size > 0;
+  const handleBarClick = (entry: unknown) => {
+    const item = entry as { keyword?: string; payload?: { keyword?: string } };
+    const keyword = item.keyword ?? item.payload?.keyword;
+    if (keyword) onToggle(keyword);
+  };
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-6">
@@ -35,7 +40,7 @@ export function MatchChart({ data, selectedKeywords, onToggle, onClear }: Props)
           <Bar
             dataKey="count"
             radius={[0, 4, 4, 0]}
-            onClick={(entry: { keyword: string }) => onToggle(entry.keyword)}
+            onClick={handleBarClick}
             style={{ cursor: 'pointer' }}
           >
             {data.map((entry, i) => {
