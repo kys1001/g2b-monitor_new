@@ -1,6 +1,14 @@
 import { G2BApiResponse, G2BItem } from '@/types';
 
-const BASE_URL = 'http://apis.data.go.kr/1230000/ad/BidPublicInfoService';
+const BASE_URL = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
+
+function getApiKey(): string {
+  const apiKey = process.env.G2B_API_KEY;
+  if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
+    throw new Error('G2B_API_KEY environment variable is not configured.');
+  }
+  return apiKey;
+}
 
 function formatDatetime(date: Date): string {
   const y = date.getFullYear();
@@ -48,10 +56,7 @@ export async function fetchBidListByDate(
   endDt: string,
   page = 1
 ): Promise<{ items: G2BItem[]; totalCount: number }> {
-  const apiKey = process.env.G2B_API_KEY;
-  if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
-    return { items: [], totalCount: 0 };
-  }
+  const apiKey = getApiKey();
 
   const params = new URLSearchParams({
     numOfRows: '999',
@@ -133,10 +138,7 @@ export async function searchBidByKeyword(
   beginDt: string,
   endDt: string
 ): Promise<G2BItem[]> {
-  const apiKey = process.env.G2B_API_KEY;
-  if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
-    return [];
-  }
+  const apiKey = getApiKey();
 
   const params = new URLSearchParams({
     numOfRows: '999',

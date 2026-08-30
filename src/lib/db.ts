@@ -2,7 +2,12 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const isVercelRuntime =
+  process.env.VERCEL === '1' || process.cwd().startsWith('/var/task');
+
+const DATA_DIR = isVercelRuntime
+  ? path.join('/tmp', 'g2b-monitor', 'data')
+  : path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'g2b.db');
 
 let db: Database.Database | null = null;
