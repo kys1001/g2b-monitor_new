@@ -1,5 +1,5 @@
 /**
- * 하루 1회 수집 + 디스코드 전송용 다이제스트 생성 스크립트.
+ * 하루 1회(월~토) 수집 + 디스코드 전송용 다이제스트 생성 스크립트.
  *
  * OpenClaw cron이 이 스크립트를 실행하고, stdout 전체를 디스코드로 announce 한다.
  * 앱 서버(next dev)가 떠 있지 않아도 동작하도록 collector를 직접 호출한다.
@@ -9,7 +9,7 @@
  * 해당 공고 상세를 뽑는다. 일일 크론(isolated 세션)과 답장 처리 세션이 서로
  * 다르기 때문에, 매핑은 반드시 파일로 넘겨야 한다.
  *
- *   npm run digest                          # 오늘 등록분 수집
+ *   npm run digest                          # 오늘 등록분 (월요일은 일+월 2일치)
  *   npm run digest -- --days 3              # 최근 3일치까지 넓혀서 수집(누락 복구용)
  *   npm run digest -- --since "2026-08-01"  # 수집 없이 해당 시점 이후분 다시 뽑기(재전송/점검용)
  */
@@ -58,11 +58,20 @@ function rangeForDays(days: number): { begin: string; end: string } {
   return { begin: fmtDatetime(begin), end: fmtDatetime(end) };
 }
 
+/**
+ * 조회 범위(일). --days 로 명시하면 그 값을 쓰고, 없으면 요일에 따라 정한다.
+ *
+ * 크론은 월~토만 돌기 때문에 일요일 등록분을 아무도 안 가져간다. 그래서 월요일에는
+ * 기본 2일치(일+월)를 훑는다. 이미 저장된 공고는 UNIQUE 제약으로 걸러지므로
+ * 범위가 겹쳐도 중복 저장되지 않는다.
+ */
 function parseDays(argv: string[]): number {
   const i = argv.indexOf('--days');
-  if (i === -1) return 1;
-  const n = parseInt(argv[i + 1], 10);
-  return Number.isFinite(n) && n > 0 ? n : 1;
+  if (i !== -1) {
+    const n = parseInt(argv[i + 1], 10);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+  return new Date().getDay() === 1 ? 2 : 1; // 1 = 월요일
 }
 
 /** --since <datetime>: 수집을 건너뛰고 해당 시점 이후 수집분만 다시 렌더링 */
