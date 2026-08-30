@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "digest": "tsx --env-file=.env.local scripts/daily-digest.ts"
+    "digest": "tsx --env-file=.env.local scripts/daily-digest.ts",
+    "notice": "tsx --env-file=.env.local scripts/notice-detail.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
